@@ -4,7 +4,7 @@
     "version": "0.0.1",
     "minAppVersion": "0.15.0",
     "description": "Create GitHub Pull Requests directly from your Obsidian notes for content publishing workflows",
-    "author": "Your Name",
+    "author": "Amin Khorrami",
     "authorUrl": "https://amin.contact",
     "isDesktopOnly": false
   }

@@ -60,7 +60,7 @@ The plugin includes presets for popular static site generators:
 
 ## Contributing
 
-Contributions are welcome! Please check out the CONTRIBUTING.md file for guidelines.
+Contributions are welcome! Please submit your PRs.
 
 ## License
 

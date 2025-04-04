@@ -75,3 +75,57 @@
   .content-publisher-ribbon-icon {
     color: var(--interactive-accent);
   }
+
+  .repository-selection-modal .repository-list {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .repository-selection-modal .repository-list .setting-item {
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin: 0;
+    padding: 8px 12px;
+  }
+  
+  .repository-selection-modal .repository-list .setting-item:last-child {
+    border-bottom: none;
+  }
+  
+  .repository-selection-modal .setting-item-description {
+    font-size: 0.85em;
+    opacity: 0.8;
+  }
+  
+  .repository-selection-modal .mod-warning {
+    color: var(--text-warning);
+    font-style: italic;
+    margin-top: 12px;
+  }
+  
+  .repository-modal-footer {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .repository-modal-footer .setting-item {
+    border: none;
+    padding: 0;
+  }
+  
+  /* Repository List in Settings */
+  .content-publisher-settings .repository-section .setting-item {
+    border-left: 2px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+  
+  .content-publisher-settings .repository-section .setting-item:hover {
+    border-left-color: var(--interactive-accent);
+  }
+  
+  .content-publisher-settings .repository-section .setting-item-name {
+    font-weight: 600;
+  }
