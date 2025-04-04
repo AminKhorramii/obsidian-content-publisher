@@ -1,0 +1,31 @@
+# Obsidian
+.obsidian/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+yarn.lock
+package-lock.json
+
+# Build files
+main.js
+*.js.map
+*.d.ts
+dist/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Cache
+.cache/

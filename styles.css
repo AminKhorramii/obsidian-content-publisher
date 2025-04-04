@@ -1,0 +1,77 @@
+/* Content Publisher Plugin Styles */
+
+/* Modal Styles */
+.content-publisher-modal .setting-item {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  
+  .content-publisher-modal textarea {
+    width: 100%;
+    min-height: 80px;
+    font-family: var(--font-text);
+    resize: vertical;
+  }
+  
+  .content-publisher-modal .repository-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+  }
+  
+  .content-publisher-modal .repository-list .setting-item {
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+  }
+  
+  .content-publisher-modal .repository-list .setting-item:last-child {
+    border-bottom: none;
+  }
+  
+  /* Settings Styles */
+  .repository-detail {
+    margin-left: 24px;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    border-left: 2px solid var(--background-modifier-border);
+    padding-left: 10px;
+  }
+  
+  /* Template Variables List */
+  .content-publisher-settings ul {
+    margin-top: 12px;
+    padding-left: 24px;
+  }
+  
+  .content-publisher-settings ul li {
+    margin-bottom: 6px;
+  }
+  
+  /* Status Indicator */
+  .content-publisher-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  
+  .content-publisher-status-published {
+    background-color: var(--color-green);
+  }
+  
+  .content-publisher-status-draft {
+    background-color: var(--color-yellow);
+  }
+  
+  .content-publisher-status-pending {
+    background-color: var(--color-orange);
+  }
+  
+  /* Ribbon Icon */
+  .content-publisher-ribbon-icon {
+    color: var(--interactive-accent);
+  }
