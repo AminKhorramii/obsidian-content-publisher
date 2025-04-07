@@ -43,7 +43,65 @@ export class GitHubService {
   }
 
   /**
-   * Creates a pull request with the provided content and optional media files
+   * Creates or updates a file in the repository
+   * This handles the SHA requirement for existing files
+   */
+  private async createOrUpdateFile(
+    owner: string,
+    repo: string,
+    path: string,
+    content: string,
+    message: string,
+    branch: string
+  ): Promise<void> {
+    try {
+      // First try to get the file to see if it exists
+      let fileSha: string | undefined;
+
+      try {
+        // Check if file already exists
+        const { data } = await this.octokit.repos.getContent({
+          owner,
+          repo,
+          path,
+          ref: branch,
+        });
+
+        // If file exists, get its SHA
+        if (!Array.isArray(data) && data.sha) {
+          fileSha = data.sha;
+          console.log(`File already exists: ${path}, SHA: ${fileSha}`);
+        }
+      } catch (error) {
+        // File doesn't exist, which is fine - we'll create it
+        console.log(`File doesn't exist yet: ${path}`);
+      }
+
+      // Create or update the file with SHA if it exists
+      const params: any = {
+        owner,
+        repo,
+        path,
+        message,
+        content,
+        branch,
+      };
+
+      // Only add SHA if file exists
+      if (fileSha) {
+        params.sha = fileSha;
+      }
+
+      await this.octokit.repos.createOrUpdateFileContents(params);
+      console.log(`File created/updated successfully: ${path}`);
+    } catch (error) {
+      console.error(`Error creating/updating file: ${path}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a pull request with the provided content and media files
    */
   async createPullRequest(options: CreatePROptions): Promise<string> {
     const {
@@ -56,139 +114,94 @@ export class GitHubService {
       branchName,
       mediaFiles = [],
     } = options;
-  
-    console.log("GITHUB PR CREATION START =========");
-    console.log(`Creating PR for file: ${filename}`);
-    console.log(`Media files to upload: ${mediaFiles.length}`);
-    mediaFiles.forEach((media, index) => {
-      console.log(`Media file ${index+1}: ${media.targetPath} (content length: ${media.content.length})`);
-    });
-  
+
+    console.log(`Creating PR with ${mediaFiles.length} media files`);
+
     try {
       // 1. Get the latest commit SHA from the base branch
-      console.log(`Getting latest commit from ${repository.baseBranch}`);
       const { data: refData } = await this.octokit.git.getRef({
         owner: repository.owner,
         repo: repository.name,
         ref: `heads/${repository.baseBranch}`,
       });
       const baseSha = refData.object.sha;
-      console.log(`Base branch SHA: ${baseSha}`);
-  
+
       // 2. Create a new branch from the base branch
       try {
-        console.log(`Creating new branch: ${branchName}`);
         await this.octokit.git.createRef({
           owner: repository.owner,
           repo: repository.name,
           ref: `refs/heads/${branchName}`,
           sha: baseSha,
         });
-        console.log(`Branch created successfully: ${branchName}`);
+        console.log(`Created branch: ${branchName}`);
       } catch (error) {
         // Check if branch already exists
         if (error.status === 422) {
           console.log(`Branch ${branchName} already exists, reusing it`);
         } else {
-          console.error(`ERROR creating branch:`, error);
-          throw new Error(`Failed to create branch: ${error.message}`);
+          throw error;
         }
       }
-  
-      // 3. Upload the MEDIA FILES FIRST - MODIFIED FOR DEBUGGING
-      console.log(`Uploading ${mediaFiles.length} media files...`);
-      
-      if (mediaFiles.length === 0) {
-        console.log("WARNING: No media files to upload!");
-      }
-      
-      for (let i = 0; i < mediaFiles.length; i++) {
-        const mediaFile = mediaFiles[i];
-        console.log(`\nUploading media ${i+1}/${mediaFiles.length}: ${mediaFile.targetPath}`);
-        
-        // Validate media content
-        if (!mediaFile.content || mediaFile.content.length === 0) {
-          console.error(`ERROR: Empty content for ${mediaFile.targetPath}`);
-          new Notice(`Error: Media file has empty content: ${mediaFile.targetPath}`);
-          continue; // Skip this file but try to continue with others
-        }
-        
+
+      // 3. Upload the MEDIA FILES FIRST
+      for (const mediaFile of mediaFiles) {
         try {
-          console.log(`Making GitHub API call to upload ${mediaFile.targetPath}`);
-          console.log(`Content length: ${mediaFile.content.length} characters`);
-          
-          const response = await this.octokit.repos.createOrUpdateFileContents({
-            owner: repository.owner,
-            repo: repository.name,
-            path: mediaFile.targetPath,
-            message: `Add media: ${path.basename(mediaFile.targetPath)}`,
-            content: mediaFile.content,
-            branch: branchName,
-          });
-          
-          console.log(`SUCCESS: Media file uploaded: ${mediaFile.targetPath}`);
-          console.log(`File URL: ${response.data.content?.html_url || 'unknown'}`);
+          console.log(`Uploading media file: ${mediaFile.targetPath}`);
+          await this.createOrUpdateFile(
+            repository.owner,
+            repository.name,
+            mediaFile.targetPath,
+            mediaFile.content,
+            `Add media: ${path.basename(mediaFile.targetPath)}`,
+            branchName
+          );
         } catch (error) {
-          console.error(`ERROR uploading media file:`, error);
-          console.error(`Error details:`, error.message);
-          
-          if (error.status) {
-            console.error(`HTTP Status: ${error.status}`);
-          }
-          
-          if (error.response?.data) {
-            console.error(`API Response:`, error.response.data);
-          }
-          
-          new Notice(`Error uploading media file: ${mediaFile.targetPath}`, 5000);
-          // Continue with other files instead of aborting entirely
+          console.error(
+            `Error uploading media file ${mediaFile.targetPath}:`,
+            error
+          );
+          new Notice(
+            `Error uploading media file: ${mediaFile.targetPath}`,
+            5000
+          );
+          throw error;
         }
       }
-  
-      // 4. Create the content file 
+
+      // 4. Create the content file
       const filePath = repository.targetPath
         ? `${repository.targetPath}/${filename}`.replace(/\/+/g, "/")
         : filename;
-  
+
       console.log(`Creating content file: ${filePath}`);
-      try {
-        await this.octokit.repos.createOrUpdateFileContents({
-          owner: repository.owner,
-          repo: repository.name,
-          path: filePath,
-          message: commitMessage,
-          content: Buffer.from(content).toString("base64"),
-          branch: branchName,
-        });
-        console.log(`Content file created successfully: ${filePath}`);
-      } catch (contentError) {
-        console.error(`ERROR creating content file:`, contentError);
-        throw new Error(`Failed to create content file: ${contentError.message}`);
-      }
-  
+      await this.createOrUpdateFile(
+        repository.owner,
+        repository.name,
+        filePath,
+        Buffer.from(content).toString("base64"),
+        commitMessage,
+        branchName
+      );
+
       // 5. Create the pull request
       console.log(`Creating pull request with title: "${title}"`);
-      try {
-        const { data: prData } = await this.octokit.pulls.create({
-          owner: repository.owner,
-          repo: repository.name,
-          title: title,
-          body: body,
-          head: branchName,
-          base: repository.baseBranch,
-        });
-        console.log(`Pull request created successfully: ${prData.html_url}`);
-        console.log("GITHUB PR CREATION END =========");
-        return prData.html_url;
-      } catch (prError) {
-        console.error(`ERROR creating PR:`, prError);
-        throw new Error(`Failed to create PR: ${prError.message}`);
-      }
+      const { data: prData } = await this.octokit.pulls.create({
+        owner: repository.owner,
+        repo: repository.name,
+        title: title,
+        body: body,
+        head: branchName,
+        base: repository.baseBranch,
+      });
+
+      return prData.html_url;
     } catch (error) {
-      console.error('ERROR in createPullRequest:', error);
+      console.error("Error creating pull request:", error);
       throw new Error(`Failed to create PR: ${error.message}`);
     }
   }
+
   /**
    * Fetches repositories the user has access to
    */

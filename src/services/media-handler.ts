@@ -275,7 +275,9 @@ export class MediaHandler {
       return ref.original.replace(/src="[^"]+"/, `src="${newPath}"`);
     }
     
+    const fixedPath = newPath.replace('/public/', '/');
+  
     // Default fallback
-    return `![${ref.alt}](${newPath})`;
+    return `![${ref.alt}](${fixedPath})`;
   }
 }
