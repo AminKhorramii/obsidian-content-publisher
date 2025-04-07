@@ -55,9 +55,6 @@ export class SettingsTab extends PluginSettingTab {
         })
       );
 
-    // Rest of the settings implementation...
-    // (Keeping the same but fixing specific type issues)
-
     // Site Generator Presets
     new Setting(containerEl)
       .setName("Site Generator Preset")
@@ -120,16 +117,44 @@ export class SettingsTab extends PluginSettingTab {
           }
         })
       );
+
+    containerEl.createEl("h3", { text: "Media Handling" });
+
+    new Setting(containerEl)
+    .setName('Process Media Files')
+    .setDesc('Automatically upload media referenced in your notes to GitHub')
+    .addToggle(toggle => toggle
+      .setValue(this.plugin.settings.media.enabled)
+      .onChange(async (value) => {
+        this.plugin.settings.media.enabled = value;
+        await this.plugin.saveSettings();
+        this.display(); // Refresh to show/hide other settings
+      }));
+  
+  if (this.plugin.settings.media.enabled) {
+    new Setting(containerEl)
+      .setName('Media Repository Path')
+      .setDesc('Path in the repository where media will be stored (e.g., public/images)')
+      .addText(text => text
+        .setValue(this.plugin.settings.media.targetPath)
+        .setPlaceholder('public/images')
+        .onChange(async (value) => {
+          this.plugin.settings.media.targetPath = value;
+          await this.plugin.saveSettings();
+        }));
+  }
   }
 
-  private openRepositorySelectionModal(repos: Array<{full_name: string, default_branch: string}>) {
+  private openRepositorySelectionModal(
+    repos: Array<{ full_name: string; default_branch: string }>
+  ) {
     const modal = new Modal(this.app);
-    modal.titleEl.setText('Select Repositories');
-    
-    modal.contentEl.createEl('p', { 
-      text: 'Select repositories from your GitHub account to add to the plugin.'
+    modal.titleEl.setText("Select Repositories");
+
+    modal.contentEl.createEl("p", {
+      text: "Select repositories from your GitHub account to add to the plugin.",
     });
-    
+
     // Track selections directly in an array instead of relying on DOM
     interface RepoSelection {
       owner: string;
@@ -137,125 +162,140 @@ export class SettingsTab extends PluginSettingTab {
       baseBranch: string;
       selected: boolean;
     }
-    
+
     // Parse repos into our tracking structure
     const repoSelections: RepoSelection[] = [];
-    
+
     // Track repositories that are already configured
     const existingRepos = new Set(
-      this.plugin.settings.repositories.map(r => `${r.owner}/${r.name}`)
+      this.plugin.settings.repositories.map((r) => `${r.owner}/${r.name}`)
     );
-    
+
     // Create the container
-    const repoList = modal.contentEl.createEl('div', { cls: 'repository-list' });
-    
+    const repoList = modal.contentEl.createEl("div", {
+      cls: "repository-list",
+    });
+
     // Add all repos with toggle controls
-    repos.forEach(repo => {
+    repos.forEach((repo) => {
       if (!repo.full_name) return;
-      
-      const [owner, name] = repo.full_name.split('/');
+
+      const [owner, name] = repo.full_name.split("/");
       if (!owner || !name) return;
-      
+
       // Skip repos that are already added
       if (existingRepos.has(repo.full_name)) {
         new Setting(repoList)
           .setName(repo.full_name)
-          .setDesc(`Already configured - Default branch: ${repo.default_branch}`)
+          .setDesc(
+            `Already configured - Default branch: ${repo.default_branch}`
+          )
           .setDisabled(true);
         return;
       }
-      
+
       // Create our tracking object
       const repoSelection: RepoSelection = {
         owner,
         name,
         baseBranch: repo.default_branch,
-        selected: false
+        selected: false,
       };
-      
+
       repoSelections.push(repoSelection);
-      
+
       // Create setting with direct reference to our selection object
       new Setting(repoList)
         .setName(repo.full_name)
         .setDesc(`Default branch: ${repo.default_branch}`)
-        .addToggle(toggle => {
+        .addToggle((toggle) => {
           toggle.setValue(false);
-          toggle.onChange(value => {
+          toggle.onChange((value) => {
             // Update our tracking directly
             repoSelection.selected = value;
             console.log(`Repository ${repo.full_name} selected: ${value}`);
           });
         });
     });
-    
+
     if (repoSelections.length === 0) {
-      modal.contentEl.createEl('p', {
-        text: 'All your repositories are already configured in the plugin.',
-        cls: 'mod-warning'
+      modal.contentEl.createEl("p", {
+        text: "All your repositories are already configured in the plugin.",
+        cls: "mod-warning",
       });
     }
-    
+
     // Add buttons at the bottom
-    const footerEl = modal.contentEl.createEl('div', { cls: 'repository-modal-footer' });
-    
+    const footerEl = modal.contentEl.createEl("div", {
+      cls: "repository-modal-footer",
+    });
+
     new Setting(footerEl)
-      .addButton(button => button
-        .setButtonText('Cancel')
-        .onClick(() => {
+      .addButton((button) =>
+        button.setButtonText("Cancel").onClick(() => {
           modal.close();
-        }))
-      .addButton(button => button
-        .setButtonText('Add Selected')
-        .setCta()
-        .onClick(async () => {
-          // Use our tracking array instead of DOM querying
-          const selectedRepos = repoSelections.filter(repo => repo.selected);
-          
-          if (selectedRepos.length === 0) {
-            new Notice('No repositories selected');
-            return;
-          }
-          
-          // Format selected repos for the plugin settings
-          const reposToAdd = selectedRepos.map(repo => ({
-            owner: repo.owner,
-            name: repo.name,
-            baseBranch: repo.baseBranch,
-            targetPath: 'content/posts' // Default path
-          }));
-          
-          // Add to plugin settings
-          this.plugin.settings.repositories.push(...reposToAdd);
-          
-          // Set default if needed
-          if (!this.plugin.settings.defaultRepository && reposToAdd.length > 0) {
-            const firstRepo = reposToAdd[0];
-            this.plugin.settings.defaultRepository = `${firstRepo.owner}/${firstRepo.name}`;
-          }
-          
-          await this.plugin.saveSettings();
-          this.display();
-          modal.close();
-          
-          new Notice(`Added ${reposToAdd.length} ${reposToAdd.length === 1 ? 'repository' : 'repositories'}`);
-        }));
-    
+        })
+      )
+      .addButton((button) =>
+        button
+          .setButtonText("Add Selected")
+          .setCta()
+          .onClick(async () => {
+            // Use our tracking array instead of DOM querying
+            const selectedRepos = repoSelections.filter(
+              (repo) => repo.selected
+            );
+
+            if (selectedRepos.length === 0) {
+              new Notice("No repositories selected");
+              return;
+            }
+
+            // Format selected repos for the plugin settings
+            const reposToAdd = selectedRepos.map((repo) => ({
+              owner: repo.owner,
+              name: repo.name,
+              baseBranch: repo.baseBranch,
+              targetPath: "content/posts", // Default path
+            }));
+
+            // Add to plugin settings
+            this.plugin.settings.repositories.push(...reposToAdd);
+
+            // Set default if needed
+            if (
+              !this.plugin.settings.defaultRepository &&
+              reposToAdd.length > 0
+            ) {
+              const firstRepo = reposToAdd[0];
+              this.plugin.settings.defaultRepository = `${firstRepo.owner}/${firstRepo.name}`;
+            }
+
+            await this.plugin.saveSettings();
+            this.display();
+            modal.close();
+
+            new Notice(
+              `Added ${reposToAdd.length} ${
+                reposToAdd.length === 1 ? "repository" : "repositories"
+              }`
+            );
+          })
+      );
+
     // Style the modal
-    modal.contentEl.addClass('repository-selection-modal');
-    
+    modal.contentEl.addClass("repository-selection-modal");
+
     // Set height and scrolling
     if (repos.length > 10) {
-      repoList.style.maxHeight = '300px';
-      repoList.style.overflow = 'auto';
-      repoList.style.marginBottom = '1em';
+      repoList.style.maxHeight = "300px";
+      repoList.style.overflow = "auto";
+      repoList.style.marginBottom = "1em";
     }
-    
+
     // Debugging helper
     console.log(`Found ${repoSelections.length} repositories to display`);
-    
+
     modal.open();
   }
-
-  // Rest of the implementation...
 }
